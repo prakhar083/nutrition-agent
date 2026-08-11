@@ -28,10 +28,10 @@ Node.js/TypeScript, single long-running local process.
    FoodData Central + IFCT 2017 (Indian foods), keyed by ingredient with
    per-100g calories/macros/micros. Source of truth for all nutrition math.
 3. **Meal Plan Generator** — Claude-powered. Given today's targets,
-   preferences, and recent meal history, composes dishes bottom-up from
-   ingredients (dish = list of `{ingredient, grams}`), computes totals from
-   the Ingredient DB, and iterates until the day's plan hits macro/micro
-   targets within tolerance.
+   preferences (including available cooking mediums), and recent meal
+   history, composes dishes bottom-up from ingredients (dish = list of
+   `{ingredient, grams}`), computes totals from the Ingredient DB, and
+   iterates until the day's plan hits macro/micro targets within tolerance.
 4. **Variety Tracker** — stores plan history; excludes dishes served within
    a rolling window (default 14 days, configurable) when generating new
    plans. If targets can't be hit within the window, oldest exclusions are
@@ -62,10 +62,17 @@ link -> formatted message sent to the user via Telegram.
 
 Bot asks, one at a time: dietary preference (veg/non-veg/eggetarian/vegan),
 allergies/dislikes, regional cuisine preference (North/South/East/West
-Indian), initial calorie/macro/micro targets (text or screenshot — sent
-directly to Claude's vision, no separate OCR), and portion size in
-grams/ml (given directly, or derived from targets). Stored as the user
-profile in SQLite.
+Indian), available cooking mediums (e.g. gas stove, convection microwave,
+air fryer, OTG, induction), initial calorie/macro/micro targets (text or
+screenshot — sent directly to Claude's vision, no separate OCR), and
+portion size in grams/ml (given directly, or derived from targets). Stored
+as the user profile in SQLite.
+
+Available cooking mediums constrain the Meal Plan Generator and Recipe
+Writer: dishes are only proposed if they're achievable with at least one of
+the user's available mediums, and the Hinglish instructions are written for
+that specific medium (e.g. air-fryer timing/temp vs. stovetop steps for the
+same dish). Editable later the same way as other preferences.
 
 ## Updating targets later
 
