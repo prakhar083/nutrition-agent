@@ -1,0 +1,12 @@
+[
+  { "name": "rice", "caloriesPer100g": 130, "proteinGPer100g": 2.7, "carbsGPer100g": 28, "fatGPer100g": 0.3, "microsPer100g": { "ironMg": 0.2 }, "tags": ["grain", "north-indian", "south-indian"] },
+  { "name": "dal", "caloriesPer100g": 116, "proteinGPer100g": 9, "carbsGPer100g": 20, "fatGPer100g": 0.4, "microsPer100g": { "ironMg": 1.5 }, "tags": ["legume", "north-indian"] },
+  { "name": "roti_atta", "caloriesPer100g": 341, "proteinGPer100g": 12, "carbsGPer100g": 69, "fatGPer100g": 1.7, "microsPer100g": { "ironMg": 3.9 }, "tags": ["grain", "north-indian"] },
+  { "name": "paneer", "caloriesPer100g": 265, "proteinGPer100g": 18, "carbsGPer100g": 3.4, "fatGPer100g": 20.8, "microsPer100g": { "calciumMg": 480 }, "tags": ["dairy", "north-indian"] },
+  { "name": "chicken_breast", "caloriesPer100g": 165, "proteinGPer100g": 31, "carbsGPer100g": 0, "fatGPer100g": 3.6, "microsPer100g": { "ironMg": 1 }, "tags": ["meat"] },
+  { "name": "spinach", "caloriesPer100g": 23, "proteinGPer100g": 2.9, "carbsGPer100g": 3.6, "fatGPer100g": 0.4, "microsPer100g": { "ironMg": 2.7, "vitaminAMcg": 469 }, "tags": ["vegetable", "north-indian", "south-indian"] },
+  { "name": "curd", "caloriesPer100g": 98, "proteinGPer100g": 11, "carbsGPer100g": 3.4, "fatGPer100g": 4.3, "microsPer100g": { "calciumMg": 380 }, "tags": ["dairy"] },
+  { "name": "coconut_grated", "caloriesPer100g": 354, "proteinGPer100g": 3.3, "carbsGPer100g": 15, "fatGPer100g": 33, "microsPer100g": {}, "tags": ["south-indian"] },
+  { "name": "sambar_dal", "caloriesPer100g": 116, "proteinGPer100g": 9, "carbsGPer100g": 20, "fatGPer100g": 0.4, "microsPer100g": { "ironMg": 1.5 }, "tags": ["legume", "south-indian"] },
+  { "name": "egg", "caloriesPer100g": 155, "proteinGPer100g": 13, "carbsGPer100g": 1.1, "fatGPer100g": 11, "microsPer100g": { "vitaminDMcg": 2 }, "tags": ["eggetarian"] }
+]
