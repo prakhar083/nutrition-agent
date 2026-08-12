@@ -205,6 +205,7 @@ CREATE TABLE IF NOT EXISTS user_profile (
   region TEXT NOT NULL,
   cooking_mediums TEXT NOT NULL DEFAULT '[]',
   portion_grams_per_meal INTEGER,
+  preference_notes TEXT NOT NULL DEFAULT '',
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -534,7 +535,7 @@ git commit -m "feat: add nutrition calculator and ingredient seed data"
 
 **Interfaces:**
 - Consumes: `getDb()` from Task 2.
-- Produces: `type UserProfile = { dietType: string; allergies: string[]; region: string; cookingMediums: string[]; portionGramsPerMeal: number | null }`; `userProfileRepo.get(): UserProfile | null`; `userProfileRepo.upsert(profile: UserProfile): void`.
+- Produces: `type UserProfile = { dietType: string; allergies: string[]; region: string; cookingMediums: string[]; portionGramsPerMeal: number | null; preferenceNotes: string }`; `userProfileRepo.get(): UserProfile | null`; `userProfileRepo.upsert(profile: UserProfile): void`.
 - Produces: `type Targets = { calories: number; proteinG: number; carbsG: number; fatG: number; micros: Record<string, number> }`; `targetsRepo.getActive(): Targets | null`; `targetsRepo.setActive(targets: Targets): void` (deactivates prior row, inserts new active row).
 
 - [ ] **Step 1: Create `src/db/repositories/userProfileRepo.ts`**
@@ -548,6 +549,7 @@ export interface UserProfile {
   region: string;
   cookingMediums: string[];
   portionGramsPerMeal: number | null;
+  preferenceNotes: string;
 }
 
 export const userProfileRepo = {
@@ -560,20 +562,22 @@ export const userProfileRepo = {
       region: row.region,
       cookingMediums: JSON.parse(row.cooking_mediums),
       portionGramsPerMeal: row.portion_grams_per_meal,
+      preferenceNotes: row.preference_notes,
     };
   },
 
   upsert(profile: UserProfile): void {
     getDb()
       .prepare(
-        `INSERT INTO user_profile (id, diet_type, allergies, region, cooking_mediums, portion_grams_per_meal, updated_at)
-         VALUES (1, @dietType, @allergies, @region, @cookingMediums, @portionGramsPerMeal, datetime('now'))
+        `INSERT INTO user_profile (id, diet_type, allergies, region, cooking_mediums, portion_grams_per_meal, preference_notes, updated_at)
+         VALUES (1, @dietType, @allergies, @region, @cookingMediums, @portionGramsPerMeal, @preferenceNotes, datetime('now'))
          ON CONFLICT(id) DO UPDATE SET
            diet_type = @dietType,
            allergies = @allergies,
            region = @region,
            cooking_mediums = @cookingMediums,
            portion_grams_per_meal = @portionGramsPerMeal,
+           preference_notes = @preferenceNotes,
            updated_at = datetime('now')`
       )
       .run({
@@ -582,6 +586,7 @@ export const userProfileRepo = {
         region: profile.region,
         cookingMediums: JSON.stringify(profile.cookingMediums),
         portionGramsPerMeal: profile.portionGramsPerMeal,
+        preferenceNotes: profile.preferenceNotes,
       });
   },
 };
@@ -636,7 +641,7 @@ Run:
 npx tsx -e "
 import { userProfileRepo } from './src/db/repositories/userProfileRepo.js';
 import { targetsRepo } from './src/db/repositories/targetsRepo.js';
-userProfileRepo.upsert({ dietType: 'vegetarian', allergies: [], region: 'north-indian', cookingMediums: ['gas-stove'], portionGramsPerMeal: 350 });
+userProfileRepo.upsert({ dietType: 'vegetarian', allergies: [], region: 'north-indian', cookingMediums: ['gas-stove'], portionGramsPerMeal: 350, preferenceNotes: '' });
 targetsRepo.setActive({ calories: 2000, proteinG: 100, carbsG: 220, fatG: 60, micros: {} });
 console.log(userProfileRepo.get());
 console.log(targetsRepo.getActive());
@@ -872,7 +877,7 @@ git commit -m "feat: add config module"
 
 **Interfaces:**
 - Consumes: `config` (Task 7), `userProfileRepo` (Task 4).
-- Produces: `bot: Telegraf` instance; `registerOnboarding(bot: Telegraf): void` — wires the `/start` command and a text-message state machine for onboarding.
+- Produces: `bot: Telegraf` instance; `registerOnboarding(bot: Telegraf): void` — wires the `/start` command and a text/photo state machine for onboarding, including an optional existing-meal-plan step that extracts free-form preference notes (not a literal dish list) via Claude.
 
 - [ ] **Step 1: Create `src/telegram/bot.ts`**
 
@@ -887,9 +892,13 @@ export const bot = new Telegraf(config.telegramBotToken);
 
 ```ts
 import type { Telegraf } from "telegraf";
+import Anthropic from "@anthropic-ai/sdk";
+import { config } from "../config.js";
 import { userProfileRepo } from "../db/repositories/userProfileRepo.js";
 
-type Step = "diet" | "allergies" | "region" | "cookingMediums" | "portion" | "done";
+const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
+
+type Step = "diet" | "allergies" | "region" | "cookingMediums" | "portion" | "existingPlan" | "done";
 
 interface Session {
   step: Step;
@@ -897,6 +906,7 @@ interface Session {
   allergies?: string[];
   region?: string;
   cookingMediums?: string[];
+  portionGramsPerMeal?: number;
 }
 
 const sessions = new Map<number, Session>();
@@ -907,13 +917,59 @@ const PROMPTS: Record<Step, string> = {
   region: "Which regional cuisine do you prefer? (north-indian / south-indian / east-indian / west-indian)",
   cookingMediums: "What cooking mediums do you have available? Comma-separated (e.g. gas-stove, convection-microwave, air-fryer, otg, induction).",
   portion: "What's your target portion size per meal, in grams? (e.g. 350)",
+  existingPlan: "Do you have an existing meal plan (e.g. from a previous dietician)? Send it as text or a screenshot, or type 'skip'.",
   done: "You're all set! Send me your calorie/macro targets (text or a screenshot) whenever you're ready.",
 };
+
+const PREFERENCE_EXTRACTION_PROMPT = `The user is sharing a previous meal plan. Extract general taste/style
+preference signals from it as a short free-text note (2-4 sentences): favorite ingredients,
+cuisines, typical macro split, meal style. Do NOT list it as dishes to repeat verbatim — this
+is soft guidance for a future planner, not a plan to copy. Respond with ONLY the note text,
+no preamble.`;
+
+async function extractPreferenceNotes(content: Anthropic.MessageParam["content"]): Promise<string> {
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-5",
+    max_tokens: 512,
+    system: PREFERENCE_EXTRACTION_PROMPT,
+    messages: [{ role: "user", content }],
+  });
+  return response.content.find((b) => b.type === "text")?.text ?? "";
+}
+
+function completeOnboarding(chatId: number, session: Session, preferenceNotes: string, ctx: any) {
+  userProfileRepo.upsert({
+    dietType: session.dietType!,
+    allergies: session.allergies!,
+    region: session.region!,
+    cookingMediums: session.cookingMediums!,
+    portionGramsPerMeal: session.portionGramsPerMeal!,
+    preferenceNotes,
+  });
+  sessions.delete(chatId);
+  return ctx.reply(PROMPTS.done);
+}
 
 export function registerOnboarding(bot: Telegraf): void {
   bot.command("start", (ctx) => {
     sessions.set(ctx.chat.id, { step: "diet" });
     ctx.reply(PROMPTS.diet);
+  });
+
+  bot.on("photo", (ctx, next) => {
+    const session = sessions.get(ctx.chat.id);
+    if (!session || session.step !== "existingPlan") return next();
+
+    (async () => {
+      const photo = ctx.message.photo.at(-1)!;
+      const fileLink = await ctx.telegram.getFileLink(photo.file_id);
+      const imageResponse = await fetch(fileLink.toString());
+      const base64 = Buffer.from(await imageResponse.arrayBuffer()).toString("base64");
+      const notes = await extractPreferenceNotes([
+        { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
+      ]);
+      completeOnboarding(ctx.chat.id, session, notes, ctx);
+    })();
   });
 
   bot.on("text", (ctx, next) => {
@@ -944,16 +1000,18 @@ export function registerOnboarding(bot: Telegraf): void {
         if (!Number.isFinite(grams) || grams <= 0) {
           return ctx.reply("Please send a positive number of grams.");
         }
-        userProfileRepo.upsert({
-          dietType: session.dietType!,
-          allergies: session.allergies!,
-          region: session.region!,
-          cookingMediums: session.cookingMediums!,
-          portionGramsPerMeal: grams,
-        });
-        session.step = "done";
-        sessions.delete(ctx.chat.id);
-        return ctx.reply(PROMPTS.done);
+        session.portionGramsPerMeal = grams;
+        session.step = "existingPlan";
+        return ctx.reply(PROMPTS.existingPlan);
+      }
+      case "existingPlan": {
+        if (text.toLowerCase() === "skip") {
+          return completeOnboarding(ctx.chat.id, session, "", ctx);
+        }
+        return (async () => {
+          const notes = await extractPreferenceNotes([{ type: "text", text }]);
+          return completeOnboarding(ctx.chat.id, session, notes, ctx);
+        })();
       }
       default:
         return next();
@@ -974,7 +1032,7 @@ bot.launch();
 console.log('Bot running, send /start on Telegram.');
 "
 ```
-Expected: sending `/start` to the bot on Telegram walks through all 5 onboarding prompts and `userProfileRepo.get()` returns the saved profile afterward.
+Expected: sending `/start` to the bot on Telegram walks through all 6 onboarding prompts (including "existing meal plan" — try both `skip` and sending real text) and `userProfileRepo.get()` returns the saved profile, with `preferenceNotes` empty in the skip case and populated otherwise.
 
 - [ ] **Step 4: Commit**
 
@@ -1352,12 +1410,14 @@ export interface PlannedDish {
 }
 
 const SYSTEM_PROMPT = `You are a meal planner. You will be given: daily nutrition targets,
-a user profile (diet type, allergies, region, cooking mediums), a list of available
-ingredients with names, and a list of dish names to avoid (recently served).
+a user profile (diet type, allergies, region, cooking mediums, and optional free-text
+preference notes extracted from a previous meal plan), a list of available ingredients
+with names, and a list of dish names to avoid (recently served).
 Compose 3 meals (breakfast, lunch, dinner) for the day using ONLY ingredient names from
 the provided list, respecting diet type, allergies, region, and avoiding the excluded dish
 names. Each dish must only use cooking techniques achievable with the user's available
-cooking mediums.
+cooking mediums. Treat preference notes as soft style guidance (favor similar ingredients/
+cuisines/macro balance) — do NOT treat them as specific dishes to repeat.
 Respond with ONLY a JSON array, no other text, in this exact shape:
 [{"name": "<dish_name>", "ingredients": [{"ingredientName": "<from list>", "grams": <number>}]}]`;
 
@@ -1417,7 +1477,7 @@ import { ingredientRepo } from './src/db/repositories/ingredientRepo.js';
 ingredientRepo.seedFromFile('./data/ingredients.seed.json');
 const plan = await generateDailyPlan({
   targets: { calories: 2000, proteinG: 100, carbsG: 220, fatG: 60, micros: {} },
-  profile: { dietType: 'vegetarian', allergies: [], region: 'north-indian', cookingMediums: ['gas-stove'], portionGramsPerMeal: 350 },
+  profile: { dietType: 'vegetarian', allergies: [], region: 'north-indian', cookingMediums: ['gas-stove'], portionGramsPerMeal: 350, preferenceNotes: 'Prefers paneer-based North Indian dinners with moderate spice.' },
   availableIngredients: ingredientRepo.getAll(),
   excludedDishNames: new Set(),
 });
@@ -1768,6 +1828,6 @@ git commit -m "feat: add daily scheduler and app entrypoint"
 
 ## Self-Review Notes
 
-- **Spec coverage:** onboarding (Task 8) incl. cooking mediums; targets intake text+screenshot (Task 9); ingredient-based nutrition math (Task 3); variety window (Task 5); Zepto availability + auto-substitution (Tasks 11–12); Hinglish + medium-aware instructions (Task 14); user-curated video links (Task 10); daily Telegram delivery via scheduler (Task 16); no WhatsApp code anywhere — confirmed absent from all tasks.
+- **Spec coverage:** onboarding (Task 8) incl. cooking mediums and optional existing-meal-plan preference extraction (soft-guidance notes, not a literal dish list); targets intake text+screenshot (Task 9); ingredient-based nutrition math (Task 3); variety window (Task 5); Zepto availability + auto-substitution (Tasks 11–12); Hinglish + medium-aware instructions (Task 14); user-curated video links (Task 10); daily Telegram delivery via scheduler (Task 16); no WhatsApp code anywhere — confirmed absent from all tasks.
 - **Zepto MCP tool names are unknown until Task 11 is run against the real server** — Task 11 is a discovery step by design, and Task 12 explicitly flags the placeholder tool name (`check_availability`) to be replaced with what Task 11 finds, with its own verification step (Step 5) to confirm the swap works.
 - **Type consistency checked:** `DishIngredient`, `Ingredient`, `NutritionTotals` (Task 3) are reused as-is by Tasks 5, 12, 13, 15 with no renamed fields; `PlannedDish` (Task 13) is reused as-is by Tasks 14–15; `Targets`/`UserProfile` (Task 4) reused as-is by Tasks 13, 15.

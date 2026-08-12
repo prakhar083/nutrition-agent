@@ -28,8 +28,9 @@ Node.js/TypeScript, single long-running local process.
    FoodData Central + IFCT 2017 (Indian foods), keyed by ingredient with
    per-100g calories/macros/micros. Source of truth for all nutrition math.
 3. **Meal Plan Generator** — Claude-powered. Given today's targets,
-   preferences (including available cooking mediums), and recent meal
-   history, composes dishes bottom-up from ingredients (dish = list of
+   preferences (including available cooking mediums and any extracted
+   preference notes from an existing meal plan), and recent meal history,
+   composes dishes bottom-up from ingredients (dish = list of
    `{ingredient, grams}`), computes totals from the Ingredient DB, and
    iterates until the day's plan hits macro/micro targets within tolerance.
 4. **Variety Tracker** — stores plan history; excludes dishes served within
@@ -73,6 +74,16 @@ Writer: dishes are only proposed if they're achievable with at least one of
 the user's available mediums, and the Hinglish instructions are written for
 that specific medium (e.g. air-fryer timing/temp vs. stovetop steps for the
 same dish). Editable later the same way as other preferences.
+
+Onboarding also has one optional step: if the user has an existing meal plan
+(e.g. from a previous dietician), they can send it (text or screenshot,
+parsed the same way as targets). The agent extracts *preference signals*
+from it — dish style, favorite ingredients/cuisines, typical macro split —
+as free-form notes, not a literal list of dishes to repeat. These notes are
+passed to the Meal Plan Generator as soft guidance alongside diet
+type/region/allergies; they bias new dish choices toward the user's known
+taste without pinning the plan to specific old dishes. If the user has no
+existing plan, they type "skip" and this step is a no-op.
 
 ## Updating targets later
 
