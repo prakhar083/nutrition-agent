@@ -22,7 +22,12 @@ Respond with ONLY a JSON array, no other text, in this exact shape:
 [{"name": "<dish_name>", "ingredients": [{"ingredientName": "<from list>", "grams": <number>}]}]`;
 
 const MAX_ATTEMPTS = 3;
-const CALORIE_TOLERANCE = 0.1;
+const TOLERANCE = 0.1;
+
+function withinTolerance(actual: number, target: number, tolerance: number): boolean {
+  if (target === 0) return Math.abs(actual) <= tolerance;
+  return Math.abs(actual - target) / target <= tolerance;
+}
 
 function parsePlan(text: string): PlannedDish[] | null {
   let parsed: unknown;
@@ -95,11 +100,13 @@ export async function generateDailyPlan(input: {
         plan.map((dish) => computeDishTotals(dish.ingredients, input.availableIngredients))
       );
 
-      const withinTolerance =
-        Math.abs(totals.calories - input.targets.calories) / input.targets.calories <=
-        CALORIE_TOLERANCE;
+      const hitsTargets =
+        withinTolerance(totals.calories, input.targets.calories, TOLERANCE) &&
+        withinTolerance(totals.proteinG, input.targets.proteinG, TOLERANCE) &&
+        withinTolerance(totals.carbsG, input.targets.carbsG, TOLERANCE) &&
+        withinTolerance(totals.fatG, input.targets.fatG, TOLERANCE);
 
-      if (withinTolerance) return plan;
+      if (hitsTargets) return plan;
     } catch (err) {
       // A failure on this attempt (API error, unknown ingredient, etc.) should not
       // crash the whole function — fall through and retry, up to MAX_ATTEMPTS.
