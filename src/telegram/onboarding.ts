@@ -14,7 +14,11 @@ interface Session {
   region?: string;
   cookingMediums?: string[];
   portionGramsPerMeal?: number;
+  processing?: boolean;
 }
+
+const RETRY_MESSAGE = "Sorry, couldn't process that — please try again or type 'skip'.";
+const STILL_PROCESSING_MESSAGE = "Still processing your last message, one sec...";
 
 const sessions = new Map<number, Session>();
 
@@ -67,15 +71,26 @@ export function registerOnboarding(bot: Telegraf): void {
     const session = sessions.get(ctx.chat.id);
     if (!session || session.step !== "existingPlan") return next();
 
+    if (session.processing) {
+      return ctx.reply(STILL_PROCESSING_MESSAGE);
+    }
+
+    session.processing = true;
     (async () => {
-      const photo = ctx.message.photo.at(-1)!;
-      const fileLink = await ctx.telegram.getFileLink(photo.file_id);
-      const imageResponse = await fetch(fileLink.toString());
-      const base64 = Buffer.from(await imageResponse.arrayBuffer()).toString("base64");
-      const notes = await extractPreferenceNotes([
-        { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
-      ]);
-      completeOnboarding(ctx.chat.id, session, notes, ctx);
+      try {
+        const photo = ctx.message.photo.at(-1)!;
+        const fileLink = await ctx.telegram.getFileLink(photo.file_id);
+        const imageResponse = await fetch(fileLink.toString());
+        const base64 = Buffer.from(await imageResponse.arrayBuffer()).toString("base64");
+        const notes = await extractPreferenceNotes([
+          { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
+        ]);
+        completeOnboarding(ctx.chat.id, session, notes, ctx);
+      } catch (err) {
+        console.error("Failed to process existing-plan photo:", err);
+        session.processing = false;
+        await ctx.reply(RETRY_MESSAGE);
+      }
     })();
   });
 
@@ -112,12 +127,22 @@ export function registerOnboarding(bot: Telegraf): void {
         return ctx.reply(PROMPTS.existingPlan);
       }
       case "existingPlan": {
+        if (session.processing) {
+          return ctx.reply(STILL_PROCESSING_MESSAGE);
+        }
         if (text.toLowerCase() === "skip") {
           return completeOnboarding(ctx.chat.id, session, "", ctx);
         }
+        session.processing = true;
         return (async () => {
-          const notes = await extractPreferenceNotes([{ type: "text", text }]);
-          return completeOnboarding(ctx.chat.id, session, notes, ctx);
+          try {
+            const notes = await extractPreferenceNotes([{ type: "text", text }]);
+            return completeOnboarding(ctx.chat.id, session, notes, ctx);
+          } catch (err) {
+            console.error("Failed to process existing-plan text:", err);
+            session.processing = false;
+            return ctx.reply(RETRY_MESSAGE);
+          }
         })();
       }
       default:
