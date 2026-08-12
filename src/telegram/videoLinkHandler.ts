@@ -1,7 +1,7 @@
 import type { Telegraf } from "telegraf";
 import { videoLibraryRepo } from "../db/repositories/videoLibraryRepo.js";
 
-const YOUTUBE_URL_RE = /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)\S+)/i;
+export const YOUTUBE_URL_RE = /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)\S+)/i;
 
 export function registerVideoLinkHandler(bot: Telegraf): void {
   bot.on("text", (ctx, next) => {

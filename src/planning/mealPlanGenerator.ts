@@ -1,11 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { config } from "../config.js";
+import { anthropic, firstText } from "../anthropic/client.js";
 import { computeDishTotals, sumTotals } from "../nutrition/calculator.js";
 import type { DishIngredient, Ingredient } from "../nutrition/types.js";
 import type { Targets } from "../db/repositories/targetsRepo.js";
 import type { UserProfile } from "../db/repositories/userProfileRepo.js";
-
-const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
 
 export interface PlannedDish {
   name: string;
@@ -73,7 +70,7 @@ export async function generateDailyPlan(input: {
     try {
       const response = await anthropic.messages.create({
         model: "claude-opus-5",
-        max_tokens: 2048,
+        max_tokens: 16000,
         system: SYSTEM_PROMPT,
         messages: [
           {
@@ -88,8 +85,7 @@ export async function generateDailyPlan(input: {
         ],
       });
 
-      const text = response.content.find((b) => b.type === "text")?.text ?? "[]";
-      const plan = parsePlan(text);
+      const plan = parsePlan(firstText(response, "[]"));
       if (plan === null) {
         // Malformed response from this attempt — try again rather than throwing.
         continue;
@@ -104,9 +100,11 @@ export async function generateDailyPlan(input: {
         CALORIE_TOLERANCE;
 
       if (withinTolerance) return plan;
-    } catch {
+    } catch (err) {
       // A failure on this attempt (API error, unknown ingredient, etc.) should not
       // crash the whole function — fall through and retry, up to MAX_ATTEMPTS.
+      // Log it so an auth/rate-limit failure is distinguishable from a parse failure.
+      console.error(`Meal plan generation attempt ${attempt + 1}/${MAX_ATTEMPTS} failed:`, err);
       continue;
     }
   }

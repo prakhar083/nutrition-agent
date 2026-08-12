@@ -11,9 +11,12 @@ if (ingredientRepo.getAll().length === 0) {
   ingredientRepo.seedFromFile("./data/ingredients.seed.json");
 }
 
+// Order matters. Onboarding first: its numeric "portion" step must win over targets
+// intake. Video links next: targets intake claims any message containing a digit, and a
+// "dish_name <youtube link>" message usually does, so the video handler must see it first.
 registerOnboarding(bot);
-registerTargetsIntake(bot);
 registerVideoLinkHandler(bot);
+registerTargetsIntake(bot);
 scheduleDailyJob(bot);
 
 bot.launch();

@@ -1,8 +1,5 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { config } from "../config.js";
+import { anthropic, firstText } from "../anthropic/client.js";
 import type { PlannedDish } from "./mealPlanGenerator.js";
-
-const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
 
 const SYSTEM_PROMPT = `Write short, clear cooking instructions in Hinglish (Hindi-English mix,
 Latin script) for the given dish, using only the given ingredients and quantities. Pick
@@ -17,7 +14,7 @@ export async function writeHinglishInstructions(
 ): Promise<string> {
   const response = await anthropic.messages.create({
     model: "claude-opus-5",
-    max_tokens: 512,
+    max_tokens: 8000,
     system: SYSTEM_PROMPT,
     messages: [
       {
@@ -26,5 +23,5 @@ export async function writeHinglishInstructions(
       },
     ],
   });
-  return response.content.find((b) => b.type === "text")?.text ?? "";
+  return firstText(response);
 }

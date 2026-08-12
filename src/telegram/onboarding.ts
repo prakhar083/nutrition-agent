@@ -1,9 +1,7 @@
 import type { Telegraf } from "telegraf";
-import Anthropic from "@anthropic-ai/sdk";
-import { config } from "../config.js";
+import type Anthropic from "@anthropic-ai/sdk";
+import { anthropic, firstText } from "../anthropic/client.js";
 import { userProfileRepo } from "../db/repositories/userProfileRepo.js";
-
-const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
 
 type Step = "diet" | "allergies" | "region" | "cookingMediums" | "portion" | "existingPlan" | "done";
 
@@ -41,11 +39,11 @@ no preamble.`;
 async function extractPreferenceNotes(content: Anthropic.MessageParam["content"]): Promise<string> {
   const response = await anthropic.messages.create({
     model: "claude-sonnet-5",
-    max_tokens: 512,
+    max_tokens: 8000,
     system: PREFERENCE_EXTRACTION_PROMPT,
     messages: [{ role: "user", content }],
   });
-  return response.content.find((b) => b.type === "text")?.text ?? "";
+  return firstText(response);
 }
 
 function completeOnboarding(chatId: number, session: Session, preferenceNotes: string, ctx: any) {

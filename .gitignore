@@ -3,3 +3,4 @@ dist/
 .env
 data/butler.db
 data/zepto-token.json
+data/zepto-oauth-cache.json

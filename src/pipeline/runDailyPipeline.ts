@@ -46,8 +46,15 @@ export async function runDailyPipeline(): Promise<string> {
     const videoUrl = videoLibraryRepo.getForDish(dish.name);
 
     formatted.push({ dish: finalDish, instructions, videoUrl, substitutions });
-    planHistoryRepo.recordServed(dish.name, today);
   }
 
-  return formatDailyPlanMessage(formatted, zeptoCheckFailed);
+  const message = formatDailyPlanMessage(formatted, zeptoCheckFailed);
+
+  // Only record variety history once the full message exists. If anything above threw,
+  // nothing was delivered, so nothing should count as "recently served" on a retry.
+  for (const entry of formatted) {
+    planHistoryRepo.recordServed(entry.dish.name, today);
+  }
+
+  return message;
 }
