@@ -24,7 +24,7 @@ Respond with ONLY a JSON array, no other text, in this exact shape:
 const MAX_ATTEMPTS = 3;
 const TOLERANCE = 0.1;
 
-function withinTolerance(actual: number, target: number, tolerance: number): boolean {
+export function withinTolerance(actual: number, target: number, tolerance: number): boolean {
   if (target === 0) return Math.abs(actual) <= tolerance;
   return Math.abs(actual - target) / target <= tolerance;
 }
