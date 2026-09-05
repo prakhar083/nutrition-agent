@@ -38,6 +38,7 @@ const rice: Ingredient = {
   proteinGPer100g: 2.7,
   carbsGPer100g: 28,
   fatGPer100g: 0.3,
+  fiberGPer100g: 0.4,
   microsPer100g: {},
   tags: [],
 };
@@ -48,13 +49,14 @@ const chicken: Ingredient = {
   proteinGPer100g: 31,
   carbsGPer100g: 0,
   fatGPer100g: 3.6,
+  fiberGPer100g: 0,
   microsPer100g: {},
   tags: [],
 };
 
 // Targets set to exactly match onTargetPlan's totals (rice 100g + chicken 200g),
 // so it's unambiguous which plan should be accepted.
-const targets: Targets = { calories: 460, proteinG: 64.7, carbsG: 28, fatG: 7.5, micros: {} };
+const targets: Targets = { calories: 460, proteinG: 64.7, carbsG: 28, fatG: 7.5, fiberG: 0.4, micros: {} };
 
 const profile: UserProfile = {
   dietType: "non-vegetarian",
@@ -71,8 +73,8 @@ const onTargetPlan = [
 ];
 
 // Same total calories as onTargetPlan (460) via a different rice/chicken ratio, but
-// protein/carbs/fat land far outside tolerance — the old calories-only check would
-// have accepted this; the macro-aware check must reject it.
+// protein/carbs/fat/fiber all land far outside tolerance — the old calories-only check
+// would have accepted this; the macro-and-fiber-aware check must reject it.
 const caloriesOkMacrosOffPlan = [
   { name: "rice_heavy_bowl", ingredients: [{ ingredientName: "rice", grams: 300 }, { ingredientName: "chicken_breast", grams: 42.42 }] },
 ];
@@ -100,7 +102,7 @@ describe("generateDailyPlan macro gating", () => {
     expect(runClaude).toHaveBeenCalledTimes(3);
   });
 
-  it("accepts a plan once calories, protein, carbs, and fat are all within tolerance", async () => {
+  it("accepts a plan once calories, protein, carbs, fat, and fiber are all within tolerance", async () => {
     runClaude
       .mockResolvedValueOnce(claudeResponse(caloriesOkMacrosOffPlan))
       .mockResolvedValueOnce(claudeResponse(onTargetPlan));

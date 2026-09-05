@@ -8,6 +8,7 @@ const rice: Ingredient = {
   proteinGPer100g: 2.7,
   carbsGPer100g: 28,
   fatGPer100g: 0.3,
+  fiberGPer100g: 0.4,
   microsPer100g: { ironMg: 0.2 },
   tags: [],
 };
@@ -18,6 +19,7 @@ const dal: Ingredient = {
   proteinGPer100g: 9,
   carbsGPer100g: 20,
   fatGPer100g: 0.4,
+  fiberGPer100g: 5.4,
   microsPer100g: { ironMg: 1.5 },
   tags: [],
 };
@@ -33,6 +35,7 @@ describe("computeDishTotals", () => {
     );
     expect(totals.calories).toBeCloseTo(130 * 2 + 116 * 1, 3);
     expect(totals.proteinG).toBeCloseTo(2.7 * 2 + 9, 3);
+    expect(totals.fiberG).toBeCloseTo(0.4 * 2 + 5.4, 3);
     expect(totals.micros.ironMg).toBeCloseTo(0.2 * 2 + 1.5, 3);
   });
 
@@ -44,10 +47,17 @@ describe("computeDishTotals", () => {
 });
 
 describe("sumTotals", () => {
-  it("adds calories/macros/micros across multiple totals", () => {
-    const a = { calories: 100, proteinG: 5, carbsG: 10, fatG: 2, micros: { ironMg: 1 } };
-    const b = { calories: 200, proteinG: 10, carbsG: 20, fatG: 4, micros: { ironMg: 2 } };
+  it("adds calories/macros/fiber/micros across multiple totals", () => {
+    const a = { calories: 100, proteinG: 5, carbsG: 10, fatG: 2, fiberG: 1, micros: { ironMg: 1 } };
+    const b = { calories: 200, proteinG: 10, carbsG: 20, fatG: 4, fiberG: 3, micros: { ironMg: 2 } };
     const result = sumTotals([a, b]);
-    expect(result).toEqual({ calories: 300, proteinG: 15, carbsG: 30, fatG: 6, micros: { ironMg: 3 } });
+    expect(result).toEqual({
+      calories: 300,
+      proteinG: 15,
+      carbsG: 30,
+      fatG: 6,
+      fiberG: 4,
+      micros: { ironMg: 3 },
+    });
   });
 });

@@ -5,6 +5,7 @@ export interface Targets {
   proteinG: number;
   carbsG: number;
   fatG: number;
+  fiberG: number;
   micros: Record<string, number>;
 }
 
@@ -19,6 +20,7 @@ export const targetsRepo = {
       proteinG: row.protein_g,
       carbsG: row.carbs_g,
       fatG: row.fat_g,
+      fiberG: row.fiber_g,
       micros: JSON.parse(row.micros_json),
     };
   },
@@ -28,8 +30,8 @@ export const targetsRepo = {
     const tx = db.transaction(() => {
       db.prepare("UPDATE targets SET active = 0 WHERE active = 1").run();
       db.prepare(
-        `INSERT INTO targets (calories, protein_g, carbs_g, fat_g, micros_json, active)
-         VALUES (@calories, @proteinG, @carbsG, @fatG, @microsJson, 1)`
+        `INSERT INTO targets (calories, protein_g, carbs_g, fat_g, fiber_g, micros_json, active)
+         VALUES (@calories, @proteinG, @carbsG, @fatG, @fiberG, @microsJson, 1)`
       ).run({ ...targets, microsJson: JSON.stringify(targets.micros) });
     });
     tx();

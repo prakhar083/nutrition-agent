@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS targets (
   protein_g REAL NOT NULL,
   carbs_g REAL NOT NULL,
   fat_g REAL NOT NULL,
+  fiber_g REAL NOT NULL,
   micros_json TEXT NOT NULL DEFAULT '{}',
   active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -37,6 +38,7 @@ CREATE TABLE IF NOT EXISTS ingredients (
   protein_g_per_100g REAL NOT NULL,
   carbs_g_per_100g REAL NOT NULL,
   fat_g_per_100g REAL NOT NULL,
+  fiber_g_per_100g REAL NOT NULL DEFAULT 0,
   micros_per_100g_json TEXT NOT NULL DEFAULT '{}',
   tags_json TEXT NOT NULL DEFAULT '[]'
 );

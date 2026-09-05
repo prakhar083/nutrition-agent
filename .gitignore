@@ -2,5 +2,7 @@ node_modules/
 dist/
 .env
 data/butler.db
+data/butler.db-shm
+data/butler.db-wal
 data/zepto-token.json
 data/zepto-oauth-cache.json

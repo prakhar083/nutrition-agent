@@ -3,13 +3,13 @@ import { checkAndSubstitute } from "./availabilityChecker.js";
 import type { Ingredient } from "../nutrition/types.js";
 
 const paneer: Ingredient = {
-  name: "paneer", caloriesPer100g: 265, proteinGPer100g: 18, carbsGPer100g: 3.4, fatGPer100g: 20.8, microsPer100g: {}, tags: ["dairy"],
+  name: "paneer", caloriesPer100g: 265, proteinGPer100g: 18, carbsGPer100g: 3.4, fatGPer100g: 20.8, fiberGPer100g: 0, microsPer100g: {}, tags: ["dairy"],
 };
 const tofu: Ingredient = {
-  name: "tofu", caloriesPer100g: 76, proteinGPer100g: 8, carbsGPer100g: 1.9, fatGPer100g: 4.8, microsPer100g: {}, tags: ["dairy"],
+  name: "tofu", caloriesPer100g: 76, proteinGPer100g: 8, carbsGPer100g: 1.9, fatGPer100g: 4.8, fiberGPer100g: 0.3, microsPer100g: {}, tags: ["dairy"],
 };
 const rice: Ingredient = {
-  name: "rice", caloriesPer100g: 130, proteinGPer100g: 2.7, carbsGPer100g: 28, fatGPer100g: 0.3, microsPer100g: {}, tags: ["grain"],
+  name: "rice", caloriesPer100g: 130, proteinGPer100g: 2.7, carbsGPer100g: 28, fatGPer100g: 0.3, fiberGPer100g: 0.4, microsPer100g: {}, tags: ["grain"],
 };
 
 describe("checkAndSubstitute", () => {

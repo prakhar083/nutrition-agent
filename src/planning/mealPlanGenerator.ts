@@ -16,9 +16,10 @@ of available ingredients with names, and a list of dish names to avoid (recently
 Compose exactly profile.mealsPerDay meals plus profile.snacksPerDay snacks for the day
 (e.g. mealsPerDay=3, snacksPerDay=1 means 3 meals + 1 snack = 4 total dishes), using ONLY
 ingredient names from the provided list, respecting diet type, allergies, region, and
-avoiding the excluded dish names. Split the day's total calorie/macro targets across these
-meals and snacks so their combined totals hit the targets — snacks should generally be
-smaller portions than meals, but the exact split is your judgment. Each dish must only use
+avoiding the excluded dish names. Split the day's total calorie/protein/carbs/fat/fiber
+targets across these meals and snacks so their combined totals hit the targets — snacks
+should generally be smaller portions than meals, but the exact split is your judgment.
+Each dish must only use
 cooking techniques achievable with the user's available cooking mediums. Treat preference
 notes as soft style guidance (favor similar ingredients/cuisines/macro balance) — do NOT
 treat them as specific dishes to repeat.
@@ -102,7 +103,8 @@ export async function generateDailyPlan(input: {
         withinTolerance(totals.calories, input.targets.calories, TOLERANCE) &&
         withinTolerance(totals.proteinG, input.targets.proteinG, TOLERANCE) &&
         withinTolerance(totals.carbsG, input.targets.carbsG, TOLERANCE) &&
-        withinTolerance(totals.fatG, input.targets.fatG, TOLERANCE);
+        withinTolerance(totals.fatG, input.targets.fatG, TOLERANCE) &&
+        withinTolerance(totals.fiberG, input.targets.fiberG, TOLERANCE);
 
       if (hitsTargets) return plan;
     } catch (err) {

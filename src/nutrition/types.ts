@@ -4,6 +4,7 @@ export interface Ingredient {
   proteinGPer100g: number;
   carbsGPer100g: number;
   fatGPer100g: number;
+  fiberGPer100g: number;
   microsPer100g: Record<string, number>;
   tags: string[];
 }
@@ -18,5 +19,6 @@ export interface NutritionTotals {
   proteinG: number;
   carbsG: number;
   fatG: number;
+  fiberG: number;
   micros: Record<string, number>;
 }

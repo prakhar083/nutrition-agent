@@ -7,11 +7,13 @@ import { downloadTelegramPhotoToTempFile } from "./downloadPhoto.js";
 
 const RETRY_MESSAGE = "Sorry, couldn't read that — please try again.";
 const INVALID_TARGETS_MESSAGE =
-  "Couldn't parse valid targets from that — please send calories plus protein/carbs/fat and try again.";
+  "Couldn't parse valid targets from that — please send calories plus protein/carbs/fat/fiber and try again.";
 
 const EXTRACTION_PROMPT = `Extract daily nutrition targets from the user's message (text or image).
 Respond with ONLY a JSON object matching this exact shape, no other text:
-{"calories": number, "proteinG": number, "carbsG": number, "fatG": number, "micros": {"<name>": number, ...}}
+{"calories": number, "proteinG": number, "carbsG": number, "fatG": number, "fiberG": number, "micros": {"<name>": number, ...}}
+If a fiber target isn't explicitly stated, estimate one using the standard dietary
+guideline of ~14g of fiber per 1000 kcal rather than omitting it.
 If the targets are ambiguous or incomplete, respond with exactly: {"error": "<what is missing or unclear>"}`;
 
 interface ExtractedTargets {
@@ -19,6 +21,7 @@ interface ExtractedTargets {
   proteinG: number;
   carbsG: number;
   fatG: number;
+  fiberG: number;
   micros: Record<string, number>;
 }
 
@@ -43,14 +46,15 @@ function isPositiveNumber(value: unknown): boolean {
 }
 
 /**
- * Guards the DB against malformed Claude output: all four macro fields must be
- * finite positive numbers, and `micros` (if present) must be a plain object of numbers.
+ * Guards the DB against malformed Claude output: calories, protein, carbs, fat, and
+ * fiber must all be finite positive numbers, and `micros` (if present) must be a
+ * plain object of numbers.
  */
 export function isValidTargets(obj: unknown): obj is ExtractedTargets {
   if (typeof obj !== "object" || obj === null) return false;
   const candidate = obj as Record<string, unknown>;
 
-  for (const key of ["calories", "proteinG", "carbsG", "fatG"] as const) {
+  for (const key of ["calories", "proteinG", "carbsG", "fatG", "fiberG"] as const) {
     if (!isPositiveNumber(candidate[key])) return false;
   }
 
@@ -77,7 +81,7 @@ export function registerTargetsIntake(bot: Telegraf): void {
       if (!isValidTargets(result)) return ctx.reply(INVALID_TARGETS_MESSAGE);
       targetsRepo.setActive({ ...result, micros: result.micros ?? {} });
       return ctx.reply(
-        `Got it — ${result.calories} kcal, P${result.proteinG}/C${result.carbsG}/F${result.fatG}g. This takes effect from tomorrow's plan.`
+        `Got it — ${result.calories} kcal, P${result.proteinG}/C${result.carbsG}/F${result.fatG}/Fiber${result.fiberG}g. This takes effect from tomorrow's plan.`
       );
     } catch (err) {
       console.error("Failed to process targets text:", err);
@@ -94,7 +98,7 @@ export function registerTargetsIntake(bot: Telegraf): void {
       if (!isValidTargets(result)) return ctx.reply(INVALID_TARGETS_MESSAGE);
       targetsRepo.setActive({ ...result, micros: result.micros ?? {} });
       return ctx.reply(
-        `Got it — ${result.calories} kcal, P${result.proteinG}/C${result.carbsG}/F${result.fatG}g. This takes effect from tomorrow's plan.`
+        `Got it — ${result.calories} kcal, P${result.proteinG}/C${result.carbsG}/F${result.fatG}/Fiber${result.fiberG}g. This takes effect from tomorrow's plan.`
       );
     } catch (err) {
       console.error("Failed to process targets photo:", err);

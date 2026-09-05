@@ -9,6 +9,7 @@ function rowToIngredient(row: any): Ingredient {
     proteinGPer100g: row.protein_g_per_100g,
     carbsGPer100g: row.carbs_g_per_100g,
     fatGPer100g: row.fat_g_per_100g,
+    fiberGPer100g: row.fiber_g_per_100g,
     microsPer100g: JSON.parse(row.micros_per_100g_json),
     tags: JSON.parse(row.tags_json),
   };
@@ -33,8 +34,8 @@ export const ingredientRepo = {
     const ingredients: Ingredient[] = JSON.parse(fs.readFileSync(filePath, "utf8"));
     const insert = getDb().prepare(
       `INSERT OR REPLACE INTO ingredients
-        (name, calories_per_100g, protein_g_per_100g, carbs_g_per_100g, fat_g_per_100g, micros_per_100g_json, tags_json)
-       VALUES (@name, @caloriesPer100g, @proteinGPer100g, @carbsGPer100g, @fatGPer100g, @microsJson, @tagsJson)`
+        (name, calories_per_100g, protein_g_per_100g, carbs_g_per_100g, fat_g_per_100g, fiber_g_per_100g, micros_per_100g_json, tags_json)
+       VALUES (@name, @caloriesPer100g, @proteinGPer100g, @carbsGPer100g, @fatGPer100g, @fiberGPer100g, @microsJson, @tagsJson)`
     );
     const tx = getDb().transaction((items: Ingredient[]) => {
       for (const item of items) {
