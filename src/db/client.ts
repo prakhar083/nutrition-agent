@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS user_profile (
   cooking_mediums TEXT NOT NULL DEFAULT '[]',
   meals_per_day INTEGER,
   snacks_per_day INTEGER,
+  household_size INTEGER,
   preference_notes TEXT NOT NULL DEFAULT '',
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -56,6 +57,26 @@ CREATE TABLE IF NOT EXISTS video_library (
 );
 `;
 
+/**
+ * Columns added to an existing table after its initial release. CREATE TABLE IF NOT
+ * EXISTS only applies to brand-new databases, so an already-existing user_profile
+ * table needs each new column added explicitly — this keeps existing installs
+ * (existing onboarding/targets data) working without a manual reset every time a
+ * new field is introduced.
+ */
+const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [
+  { table: "user_profile", column: "household_size", ddl: "ALTER TABLE user_profile ADD COLUMN household_size INTEGER" },
+];
+
+function applyColumnMigrations(database: Database.Database): void {
+  for (const { table, column, ddl } of COLUMN_MIGRATIONS) {
+    const columns = database.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+    if (!columns.some((c) => c.name === column)) {
+      database.exec(ddl);
+    }
+  }
+}
+
 let db: Database.Database | null = null;
 
 export function getDb(): Database.Database {
@@ -64,5 +85,6 @@ export function getDb(): Database.Database {
   db = new Database(config.dbPath);
   db.pragma("journal_mode = WAL");
   db.exec(SCHEMA);
+  applyColumnMigrations(db);
   return db;
 }

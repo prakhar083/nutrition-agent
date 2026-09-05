@@ -7,6 +7,7 @@ export interface UserProfile {
   cookingMediums: string[];
   mealsPerDay: number;
   snacksPerDay: number;
+  householdSize: number;
   preferenceNotes: string;
 }
 
@@ -21,6 +22,7 @@ export const userProfileRepo = {
       cookingMediums: JSON.parse(row.cooking_mediums),
       mealsPerDay: row.meals_per_day,
       snacksPerDay: row.snacks_per_day,
+      householdSize: row.household_size,
       preferenceNotes: row.preference_notes,
     };
   },
@@ -28,8 +30,8 @@ export const userProfileRepo = {
   upsert(profile: UserProfile): void {
     getDb()
       .prepare(
-        `INSERT INTO user_profile (id, diet_type, allergies, region, cooking_mediums, meals_per_day, snacks_per_day, preference_notes, updated_at)
-         VALUES (1, @dietType, @allergies, @region, @cookingMediums, @mealsPerDay, @snacksPerDay, @preferenceNotes, datetime('now'))
+        `INSERT INTO user_profile (id, diet_type, allergies, region, cooking_mediums, meals_per_day, snacks_per_day, household_size, preference_notes, updated_at)
+         VALUES (1, @dietType, @allergies, @region, @cookingMediums, @mealsPerDay, @snacksPerDay, @householdSize, @preferenceNotes, datetime('now'))
          ON CONFLICT(id) DO UPDATE SET
            diet_type = @dietType,
            allergies = @allergies,
@@ -37,6 +39,7 @@ export const userProfileRepo = {
            cooking_mediums = @cookingMediums,
            meals_per_day = @mealsPerDay,
            snacks_per_day = @snacksPerDay,
+           household_size = @householdSize,
            preference_notes = @preferenceNotes,
            updated_at = datetime('now')`
       )
@@ -47,6 +50,7 @@ export const userProfileRepo = {
         cookingMediums: JSON.stringify(profile.cookingMediums),
         mealsPerDay: profile.mealsPerDay,
         snacksPerDay: profile.snacksPerDay,
+        householdSize: profile.householdSize,
         preferenceNotes: profile.preferenceNotes,
       });
   },

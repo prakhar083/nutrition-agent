@@ -65,18 +65,27 @@ const profile: UserProfile = {
   cookingMediums: ["gas-stove"],
   mealsPerDay: 3,
   snacksPerDay: 0,
+  householdSize: 1,
   preferenceNotes: "",
 };
 
 const onTargetPlan = [
-  { name: "chicken_rice_bowl", ingredients: [{ ingredientName: "rice", grams: 100 }, { ingredientName: "chicken_breast", grams: 200 }] },
+  {
+    name: "chicken_rice_bowl",
+    mealType: "Lunch",
+    ingredients: [{ ingredientName: "rice", grams: 100 }, { ingredientName: "chicken_breast", grams: 200 }],
+  },
 ];
 
 // Same total calories as onTargetPlan (460) via a different rice/chicken ratio, but
 // protein/carbs/fat/fiber all land far outside tolerance — the old calories-only check
 // would have accepted this; the macro-and-fiber-aware check must reject it.
 const caloriesOkMacrosOffPlan = [
-  { name: "rice_heavy_bowl", ingredients: [{ ingredientName: "rice", grams: 300 }, { ingredientName: "chicken_breast", grams: 42.42 }] },
+  {
+    name: "rice_heavy_bowl",
+    mealType: "Lunch",
+    ingredients: [{ ingredientName: "rice", grams: 300 }, { ingredientName: "chicken_breast", grams: 42.42 }],
+  },
 ];
 
 describe("generateDailyPlan macro gating", () => {

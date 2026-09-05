@@ -4,7 +4,7 @@ import { runClaude } from "../anthropic/client.js";
 import { userProfileRepo } from "../db/repositories/userProfileRepo.js";
 import { downloadTelegramPhotoToTempFile } from "./downloadPhoto.js";
 
-type Step = "diet" | "allergies" | "region" | "cookingMediums" | "mealsPerDay" | "snacksPerDay" | "existingPlan" | "done";
+type Step = "diet" | "allergies" | "region" | "cookingMediums" | "mealsPerDay" | "snacksPerDay" | "householdSize" | "existingPlan" | "done";
 
 interface Session {
   step: Step;
@@ -14,6 +14,7 @@ interface Session {
   cookingMediums?: string[];
   mealsPerDay?: number;
   snacksPerDay?: number;
+  householdSize?: number;
   processing?: boolean;
 }
 
@@ -29,6 +30,7 @@ const PROMPTS: Record<Step, string> = {
   cookingMediums: "What cooking mediums do you have available? Comma-separated (e.g. gas-stove, convection-microwave, air-fryer, otg, induction).",
   mealsPerDay: "How many meals do you want per day? (e.g. 3)",
   snacksPerDay: "Any snacks in between? How many per day? (e.g. 0, 1, 2)",
+  householdSize: "How many people (including you) will typically eat these meals? This decides how much of each ingredient to cook/buy. (e.g. 1)",
   existingPlan: "Do you have an existing meal plan (e.g. from a previous dietician)? Send it as text or a screenshot, or type 'skip'.",
   done: "You're all set! Send me your calorie/macro targets (text or a screenshot) whenever you're ready.",
 };
@@ -56,6 +58,7 @@ function completeOnboarding(chatId: number, session: Session, preferenceNotes: s
     cookingMediums: session.cookingMediums!,
     mealsPerDay: session.mealsPerDay!,
     snacksPerDay: session.snacksPerDay!,
+    householdSize: session.householdSize!,
     preferenceNotes,
   });
   sessions.delete(chatId);
@@ -131,6 +134,15 @@ export function registerOnboarding(bot: Telegraf): void {
           return ctx.reply("Please send a whole number of snacks (0 or more).");
         }
         session.snacksPerDay = count;
+        session.step = "householdSize";
+        return ctx.reply(PROMPTS.householdSize);
+      }
+      case "householdSize": {
+        const count = Number(text);
+        if (!Number.isInteger(count) || count <= 0) {
+          return ctx.reply("Please send a positive whole number of people.");
+        }
+        session.householdSize = count;
         session.step = "existingPlan";
         return ctx.reply(PROMPTS.existingPlan);
       }

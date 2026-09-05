@@ -7,11 +7,20 @@ import { excludeRecentDishes } from "../variety/varietyTracker.js";
 import { checkAndSubstitute, checkAvailabilityViaZepto } from "../zepto/availabilityChecker.js";
 import { generateDailyPlan } from "../planning/mealPlanGenerator.js";
 import { writeHinglishInstructions } from "../planning/recipeWriter.js";
-import { formatDailyPlanMessage, type FormattedDish } from "../telegram/formatter.js";
-import { computeDishTotals, sumTotals } from "../nutrition/calculator.js";
+import {
+  formatIngredientListMessage,
+  formatMealMessage,
+  formatSummaryMessage,
+  type FormattedDish,
+} from "../telegram/formatter.js";
+import { computeDishTotals, scaleIngredients, sumTotals } from "../nutrition/calculator.js";
 import { config } from "../config.js";
 
-export async function runDailyPipeline(): Promise<string> {
+/**
+ * Builds the day's plan and returns it as an ordered list of Telegram messages to send:
+ * one per meal/snack, then a consolidated shopping list, then a per-person nutrition summary.
+ */
+export async function runDailyPipeline(): Promise<string[]> {
   const targets = targetsRepo.getActive();
   const profile = userProfileRepo.get();
   if (!targets || !profile) {
@@ -42,24 +51,35 @@ export async function runDailyPipeline(): Promise<string> {
       zeptoCheckFailed = true;
     }
 
-    const finalDish = { name: dish.name, ingredients: finalIngredients };
-    const instructions = await writeHinglishInstructions(finalDish, profile.cookingMediums);
+    // Per-person basis — this is what the day's nutrition totals are computed from.
+    const finalDish = { name: dish.name, mealType: dish.mealType, ingredients: finalIngredients };
+
+    // Household-scaled basis — this is what the cook actually needs to prepare/buy.
+    const scaledIngredients = scaleIngredients(finalIngredients, profile.householdSize);
+    const scaledDish = { name: dish.name, mealType: dish.mealType, ingredients: scaledIngredients };
+
+    const instructions = await writeHinglishInstructions(scaledDish, profile.cookingMediums);
     const videoUrl = videoLibraryRepo.getForDish(dish.name);
 
-    formatted.push({ dish: finalDish, instructions, videoUrl, substitutions });
+    formatted.push({ dish: finalDish, scaledIngredients, instructions, videoUrl, substitutions });
   }
 
   const dayTotals = sumTotals(
     formatted.map((entry) => computeDishTotals(entry.dish.ingredients, availableIngredients))
   );
 
-  const message = formatDailyPlanMessage(formatted, zeptoCheckFailed, dayTotals, targets);
+  const messages = [
+    ...formatted.map((entry) => formatMealMessage(entry)),
+    formatIngredientListMessage(formatted, profile.householdSize, zeptoCheckFailed),
+    formatSummaryMessage(dayTotals, targets),
+  ];
 
-  // Only record variety history once the full message exists. If anything above threw,
-  // nothing was delivered, so nothing should count as "recently served" on a retry.
+  // Only record variety history once every message has been successfully built. If
+  // anything above threw, nothing was delivered, so nothing should count as
+  // "recently served" on a retry.
   for (const entry of formatted) {
     planHistoryRepo.recordServed(entry.dish.name, today);
   }
 
-  return message;
+  return messages;
 }

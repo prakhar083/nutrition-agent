@@ -25,6 +25,17 @@ export function computeDishTotals(
   return totals;
 }
 
+/**
+ * Scales ingredient grams by a factor (e.g. household size), for display/cooking
+ * purposes only — never used for the nutrition math itself, which stays per-person.
+ */
+export function scaleIngredients(dish: DishIngredient[], factor: number): DishIngredient[] {
+  return dish.map((item) => ({
+    ingredientName: item.ingredientName,
+    grams: Math.round(item.grams * factor),
+  }));
+}
+
 export function sumTotals(totalsList: NutritionTotals[]): NutritionTotals {
   const result: NutritionTotals = { calories: 0, proteinG: 0, carbsG: 0, fatG: 0, fiberG: 0, micros: {} };
   for (const t of totalsList) {

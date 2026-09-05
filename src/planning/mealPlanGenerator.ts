@@ -6,6 +6,7 @@ import type { UserProfile } from "../db/repositories/userProfileRepo.js";
 
 export interface PlannedDish {
   name: string;
+  mealType: string;
   ingredients: DishIngredient[];
 }
 
@@ -18,6 +19,11 @@ Compose exactly profile.mealsPerDay meals plus profile.snacksPerDay snacks for t
 (e.g. mealsPerDay=3, snacksPerDay=1 means 3 meals + 1 snack = 4 total dishes), using ONLY
 ingredient names from the provided list, respecting diet type, allergies, region, and
 avoiding the excluded dish names.
+Give each dish a "mealType" label so the user can tell which part of the day it's for, in
+chronological order across the day. For mealsPerDay=3/snacksPerDay=2 use: "Breakfast",
+"Morning Snack", "Lunch", "Evening Snack", "Dinner". Adapt sensibly for other counts (e.g.
+extra snacks become "Snack 2", "Late Night Snack"; extra meals become "Brunch", "Mid-Morning
+Meal", etc.) — always keep dishes in the chronological order they'd be eaten through the day.
 Do the arithmetic explicitly: using each ingredient's given per-100g values and your chosen
 gram amount, compute that ingredient's contribution (value * grams / 100), then sum across
 every ingredient in every dish. Your final combined totals across all dishes MUST land
@@ -32,7 +38,7 @@ judgment. Each dish must only use cooking techniques achievable with the user's 
 cooking mediums. Treat preference notes as soft style guidance (favor similar
 ingredients/cuisines/macro balance) — do NOT treat them as specific dishes to repeat.
 Respond with ONLY a JSON array, no other text, in this exact shape:
-[{"name": "<dish_name>", "ingredients": [{"ingredientName": "<from list>", "grams": <number>}]}]`;
+[{"name": "<dish_name>", "mealType": "<e.g. Breakfast>", "ingredients": [{"ingredientName": "<from list>", "grams": <number>}]}]`;
 
 const MAX_ATTEMPTS = 5;
 const TOLERANCE = 0.1;
@@ -57,6 +63,7 @@ function parsePlan(text: string): PlannedDish[] | null {
       typeof dish !== "object" ||
       dish === null ||
       typeof (dish as any).name !== "string" ||
+      typeof (dish as any).mealType !== "string" ||
       !Array.isArray((dish as any).ingredients)
     ) {
       return null;
