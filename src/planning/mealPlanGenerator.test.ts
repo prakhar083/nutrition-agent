@@ -22,16 +22,14 @@ describe("withinTolerance", () => {
   });
 });
 
-const messagesCreate = vi.fn();
+const runClaude = vi.fn();
 
 vi.mock("../anthropic/client.js", () => ({
-  anthropic: { messages: { create: (...args: unknown[]) => messagesCreate(...args) } },
-  firstText: (response: any, fallback: string) =>
-    response.content.find((b: any) => b.type === "text")?.text ?? fallback,
+  runClaude: (...args: unknown[]) => runClaude(...args),
 }));
 
-function claudeResponse(plan: unknown) {
-  return { content: [{ type: "text", text: JSON.stringify(plan) }] };
+function claudeResponse(plan: unknown): string {
+  return JSON.stringify(plan);
 }
 
 const rice: Ingredient = {
@@ -80,11 +78,11 @@ const caloriesOkMacrosOffPlan = [
 
 describe("generateDailyPlan macro gating", () => {
   afterEach(() => {
-    messagesCreate.mockReset();
+    runClaude.mockReset();
   });
 
   it("rejects a plan whose calories are within tolerance but macros are not, and retries", async () => {
-    messagesCreate
+    runClaude
       .mockResolvedValueOnce(claudeResponse(caloriesOkMacrosOffPlan))
       .mockResolvedValueOnce(claudeResponse(caloriesOkMacrosOffPlan))
       .mockResolvedValueOnce(claudeResponse(caloriesOkMacrosOffPlan));
@@ -98,11 +96,11 @@ describe("generateDailyPlan macro gating", () => {
       })
     ).rejects.toThrow(/Could not generate a plan within tolerance/);
 
-    expect(messagesCreate).toHaveBeenCalledTimes(3);
+    expect(runClaude).toHaveBeenCalledTimes(3);
   });
 
   it("accepts a plan once calories, protein, carbs, and fat are all within tolerance", async () => {
-    messagesCreate
+    runClaude
       .mockResolvedValueOnce(claudeResponse(caloriesOkMacrosOffPlan))
       .mockResolvedValueOnce(claudeResponse(onTargetPlan));
 
@@ -114,6 +112,6 @@ describe("generateDailyPlan macro gating", () => {
     });
 
     expect(plan).toEqual(onTargetPlan);
-    expect(messagesCreate).toHaveBeenCalledTimes(2);
+    expect(runClaude).toHaveBeenCalledTimes(2);
   });
 });

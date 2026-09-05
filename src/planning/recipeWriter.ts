@@ -1,4 +1,4 @@
-import { anthropic, firstText } from "../anthropic/client.js";
+import { runClaude } from "../anthropic/client.js";
 import type { PlannedDish } from "./mealPlanGenerator.js";
 
 const SYSTEM_PROMPT = `Write short, clear cooking instructions in Hinglish (Hindi-English mix,
@@ -12,16 +12,9 @@ export async function writeHinglishInstructions(
   dish: PlannedDish,
   cookingMediums: string[]
 ): Promise<string> {
-  const response = await anthropic.messages.create({
+  return runClaude({
     model: "claude-opus-5",
-    max_tokens: 8000,
-    system: SYSTEM_PROMPT,
-    messages: [
-      {
-        role: "user",
-        content: JSON.stringify({ dish, availableCookingMediums: cookingMediums }),
-      },
-    ],
+    systemPrompt: SYSTEM_PROMPT,
+    userText: JSON.stringify({ dish, availableCookingMediums: cookingMediums }),
   });
-  return firstText(response);
 }

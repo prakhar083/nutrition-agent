@@ -1,8 +1,9 @@
+import fs from "node:fs/promises";
 import type { Telegraf } from "telegraf";
-import type Anthropic from "@anthropic-ai/sdk";
-import { anthropic, firstText } from "../anthropic/client.js";
+import { runClaude } from "../anthropic/client.js";
 import { targetsRepo } from "../db/repositories/targetsRepo.js";
 import { YOUTUBE_URL_RE } from "./videoLinkHandler.js";
+import { downloadTelegramPhotoToTempFile } from "./downloadPhoto.js";
 
 const RETRY_MESSAGE = "Sorry, couldn't read that — please try again.";
 const INVALID_TARGETS_MESSAGE =
@@ -26,15 +27,15 @@ interface ExtractionError {
 }
 
 async function extractTargets(
-  content: Anthropic.MessageParam["content"]
+  input: { text: string } | { imagePath: string }
 ): Promise<ExtractedTargets | ExtractionError> {
-  const response = await anthropic.messages.create({
+  const resultText = await runClaude({
     model: "claude-sonnet-5",
-    max_tokens: 8000,
-    system: EXTRACTION_PROMPT,
-    messages: [{ role: "user", content }],
+    systemPrompt: EXTRACTION_PROMPT,
+    userText: "text" in input ? input.text : undefined,
+    imagePath: "imagePath" in input ? input.imagePath : undefined,
   });
-  return JSON.parse(firstText(response, "{}"));
+  return JSON.parse(resultText || "{}");
 }
 
 function isPositiveNumber(value: unknown): boolean {
@@ -71,7 +72,7 @@ export function registerTargetsIntake(bot: Telegraf): void {
     if (YOUTUBE_URL_RE.test(ctx.message.text)) return next();
     if (!/\d/.test(ctx.message.text)) return next();
     try {
-      const result = await extractTargets([{ type: "text", text: ctx.message.text }]);
+      const result = await extractTargets({ text: ctx.message.text });
       if ("error" in result) return ctx.reply(`Couldn't parse targets: ${result.error}`);
       if (!isValidTargets(result)) return ctx.reply(INVALID_TARGETS_MESSAGE);
       targetsRepo.setActive({ ...result, micros: result.micros ?? {} });
@@ -85,14 +86,10 @@ export function registerTargetsIntake(bot: Telegraf): void {
   });
 
   bot.on("photo", async (ctx) => {
+    let imagePath: string | undefined;
     try {
-      const photo = ctx.message.photo.at(-1)!;
-      const fileLink = await ctx.telegram.getFileLink(photo.file_id);
-      const imageResponse = await fetch(fileLink.toString());
-      const base64 = Buffer.from(await imageResponse.arrayBuffer()).toString("base64");
-      const result = await extractTargets([
-        { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
-      ]);
+      imagePath = await downloadTelegramPhotoToTempFile(ctx);
+      const result = await extractTargets({ imagePath });
       if ("error" in result) return ctx.reply(`Couldn't parse targets from the image: ${result.error}`);
       if (!isValidTargets(result)) return ctx.reply(INVALID_TARGETS_MESSAGE);
       targetsRepo.setActive({ ...result, micros: result.micros ?? {} });
@@ -102,6 +99,8 @@ export function registerTargetsIntake(bot: Telegraf): void {
     } catch (err) {
       console.error("Failed to process targets photo:", err);
       return ctx.reply(RETRY_MESSAGE);
+    } finally {
+      if (imagePath) await fs.unlink(imagePath).catch(() => {});
     }
   });
 }

@@ -1,7 +1,8 @@
+import fs from "node:fs/promises";
 import type { Telegraf } from "telegraf";
-import type Anthropic from "@anthropic-ai/sdk";
-import { anthropic, firstText } from "../anthropic/client.js";
+import { runClaude } from "../anthropic/client.js";
 import { userProfileRepo } from "../db/repositories/userProfileRepo.js";
+import { downloadTelegramPhotoToTempFile } from "./downloadPhoto.js";
 
 type Step = "diet" | "allergies" | "region" | "cookingMediums" | "portion" | "existingPlan" | "done";
 
@@ -36,14 +37,13 @@ cuisines, typical macro split, meal style. Do NOT list it as dishes to repeat ve
 is soft guidance for a future planner, not a plan to copy. Respond with ONLY the note text,
 no preamble.`;
 
-async function extractPreferenceNotes(content: Anthropic.MessageParam["content"]): Promise<string> {
-  const response = await anthropic.messages.create({
+async function extractPreferenceNotes(input: { text: string } | { imagePath: string }): Promise<string> {
+  return runClaude({
     model: "claude-sonnet-5",
-    max_tokens: 8000,
-    system: PREFERENCE_EXTRACTION_PROMPT,
-    messages: [{ role: "user", content }],
+    systemPrompt: PREFERENCE_EXTRACTION_PROMPT,
+    userText: "text" in input ? input.text : undefined,
+    imagePath: "imagePath" in input ? input.imagePath : undefined,
   });
-  return firstText(response);
 }
 
 function completeOnboarding(chatId: number, session: Session, preferenceNotes: string, ctx: any) {
@@ -75,19 +75,17 @@ export function registerOnboarding(bot: Telegraf): void {
 
     session.processing = true;
     (async () => {
+      let imagePath: string | undefined;
       try {
-        const photo = ctx.message.photo.at(-1)!;
-        const fileLink = await ctx.telegram.getFileLink(photo.file_id);
-        const imageResponse = await fetch(fileLink.toString());
-        const base64 = Buffer.from(await imageResponse.arrayBuffer()).toString("base64");
-        const notes = await extractPreferenceNotes([
-          { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
-        ]);
+        imagePath = await downloadTelegramPhotoToTempFile(ctx);
+        const notes = await extractPreferenceNotes({ imagePath });
         completeOnboarding(ctx.chat.id, session, notes, ctx);
       } catch (err) {
         console.error("Failed to process existing-plan photo:", err);
         session.processing = false;
         await ctx.reply(RETRY_MESSAGE);
+      } finally {
+        if (imagePath) await fs.unlink(imagePath).catch(() => {});
       }
     })();
   });
@@ -134,7 +132,7 @@ export function registerOnboarding(bot: Telegraf): void {
         session.processing = true;
         return (async () => {
           try {
-            const notes = await extractPreferenceNotes([{ type: "text", text }]);
+            const notes = await extractPreferenceNotes({ text });
             return completeOnboarding(ctx.chat.id, session, notes, ctx);
           } catch (err) {
             console.error("Failed to process existing-plan text:", err);

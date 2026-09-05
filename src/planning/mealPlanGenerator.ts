@@ -1,4 +1,4 @@
-import { anthropic, firstText } from "../anthropic/client.js";
+import { runClaude } from "../anthropic/client.js";
 import { computeDishTotals, sumTotals } from "../nutrition/calculator.js";
 import type { DishIngredient, Ingredient } from "../nutrition/types.js";
 import type { Targets } from "../db/repositories/targetsRepo.js";
@@ -73,24 +73,18 @@ export async function generateDailyPlan(input: {
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     try {
-      const response = await anthropic.messages.create({
+      const resultText = await runClaude({
         model: "claude-opus-5",
-        max_tokens: 16000,
-        system: SYSTEM_PROMPT,
-        messages: [
-          {
-            role: "user",
-            content: JSON.stringify({
-              targets: input.targets,
-              profile: input.profile,
-              availableIngredients: ingredientNames,
-              excludeDishNames: [...input.excludedDishNames],
-            }),
-          },
-        ],
+        systemPrompt: SYSTEM_PROMPT,
+        userText: JSON.stringify({
+          targets: input.targets,
+          profile: input.profile,
+          availableIngredients: ingredientNames,
+          excludeDishNames: [...input.excludedDishNames],
+        }),
       });
 
-      const plan = parsePlan(firstText(response, "[]"));
+      const plan = parsePlan(resultText);
       if (plan === null) {
         // Malformed response from this attempt — try again rather than throwing.
         continue;

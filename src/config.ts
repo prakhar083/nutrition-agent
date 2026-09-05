@@ -9,7 +9,6 @@ function required(name: string): string {
 export const config = {
   telegramBotToken: required("TELEGRAM_BOT_TOKEN"),
   telegramChatId: required("TELEGRAM_CHAT_ID"),
-  anthropicApiKey: required("ANTHROPIC_API_KEY"),
   zeptoMcpUrl: process.env.ZEPTO_MCP_URL ?? "https://mcp.zepto.co.in/mcp",
   dailyPlanCron: process.env.DAILY_PLAN_CRON ?? "0 7 * * *",
   varietyWindowDays: Number(process.env.VARIETY_WINDOW_DAYS ?? "14"),
