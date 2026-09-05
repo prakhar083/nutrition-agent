@@ -8,6 +8,7 @@ import { checkAndSubstitute, checkAvailabilityViaZepto } from "../zepto/availabi
 import { generateDailyPlan } from "../planning/mealPlanGenerator.js";
 import { writeHinglishInstructions } from "../planning/recipeWriter.js";
 import { formatDailyPlanMessage, type FormattedDish } from "../telegram/formatter.js";
+import { computeDishTotals, sumTotals } from "../nutrition/calculator.js";
 import { config } from "../config.js";
 
 export async function runDailyPipeline(): Promise<string> {
@@ -48,7 +49,11 @@ export async function runDailyPipeline(): Promise<string> {
     formatted.push({ dish: finalDish, instructions, videoUrl, substitutions });
   }
 
-  const message = formatDailyPlanMessage(formatted, zeptoCheckFailed);
+  const dayTotals = sumTotals(
+    formatted.map((entry) => computeDishTotals(entry.dish.ingredients, availableIngredients))
+  );
+
+  const message = formatDailyPlanMessage(formatted, zeptoCheckFailed, dayTotals, targets);
 
   // Only record variety history once the full message exists. If anything above threw,
   // nothing was delivered, so nothing should count as "recently served" on a retry.

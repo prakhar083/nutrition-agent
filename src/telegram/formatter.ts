@@ -1,4 +1,6 @@
 import type { PlannedDish } from "../planning/mealPlanGenerator.js";
+import type { NutritionTotals } from "../nutrition/types.js";
+import type { Targets } from "../db/repositories/targetsRepo.js";
 
 export interface FormattedDish {
   dish: PlannedDish;
@@ -7,7 +9,16 @@ export interface FormattedDish {
   substitutions: { from: string; to: string }[];
 }
 
-export function formatDailyPlanMessage(dishes: FormattedDish[], zeptoCheckFailed: boolean): string {
+function round1(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+export function formatDailyPlanMessage(
+  dishes: FormattedDish[],
+  zeptoCheckFailed: boolean,
+  totals: NutritionTotals,
+  targets: Targets
+): string {
   const parts: string[] = ["🍽 Aaj ka meal plan:\n"];
 
   if (zeptoCheckFailed) {
@@ -23,6 +34,13 @@ export function formatDailyPlanMessage(dishes: FormattedDish[], zeptoCheckFailed
     if (videoUrl) parts.push(`Video: ${videoUrl}`);
     parts.push("");
   }
+
+  parts.push("📊 Din ka total (target):");
+  parts.push(`Calories: ${Math.round(totals.calories)} kcal (${Math.round(targets.calories)} kcal)`);
+  parts.push(`Protein: ${round1(totals.proteinG)}g (${round1(targets.proteinG)}g)`);
+  parts.push(`Carbs: ${round1(totals.carbsG)}g (${round1(targets.carbsG)}g)`);
+  parts.push(`Fat: ${round1(totals.fatG)}g (${round1(targets.fatG)}g)`);
+  parts.push(`Fiber: ${round1(totals.fiberG)}g (${round1(targets.fiberG)}g)`);
 
   return parts.join("\n");
 }
