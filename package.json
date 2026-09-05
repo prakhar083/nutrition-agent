@@ -7,7 +7,9 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "daily": "tsx scripts/trigger-daily.ts",
+    "recipe": "tsx scripts/trigger-recipe.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.5.0",
