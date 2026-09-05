@@ -85,10 +85,7 @@ describe("generateDailyPlan macro gating", () => {
   });
 
   it("rejects a plan whose calories are within tolerance but macros are not, and retries", async () => {
-    runClaude
-      .mockResolvedValueOnce(claudeResponse(caloriesOkMacrosOffPlan))
-      .mockResolvedValueOnce(claudeResponse(caloriesOkMacrosOffPlan))
-      .mockResolvedValueOnce(claudeResponse(caloriesOkMacrosOffPlan));
+    runClaude.mockResolvedValue(claudeResponse(caloriesOkMacrosOffPlan));
 
     await expect(
       generateDailyPlan({
@@ -99,7 +96,7 @@ describe("generateDailyPlan macro gating", () => {
       })
     ).rejects.toThrow(/Could not generate a plan within tolerance/);
 
-    expect(runClaude).toHaveBeenCalledTimes(3);
+    expect(runClaude).toHaveBeenCalledTimes(5);
   });
 
   it("accepts a plan once calories, protein, carbs, fat, and fiber are all within tolerance", async () => {
