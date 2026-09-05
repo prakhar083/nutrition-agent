@@ -61,7 +61,8 @@ const profile: UserProfile = {
   allergies: [],
   region: "north-indian",
   cookingMediums: ["gas-stove"],
-  portionGramsPerMeal: 300,
+  mealsPerDay: 3,
+  snacksPerDay: 0,
   preferenceNotes: "",
 };
 

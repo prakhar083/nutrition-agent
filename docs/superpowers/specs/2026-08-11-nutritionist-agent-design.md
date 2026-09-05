@@ -64,10 +64,16 @@ link -> formatted message sent to the user via Telegram.
 Bot asks, one at a time: dietary preference (veg/non-veg/eggetarian/vegan),
 allergies/dislikes, regional cuisine preference (North/South/East/West
 Indian), available cooking mediums (e.g. gas stove, convection microwave,
-air fryer, OTG, induction), initial calorie/macro/micro targets (text or
-screenshot — sent directly to Claude's vision, no separate OCR), and
-portion size in grams/ml (given directly, or derived from targets). Stored
-as the user profile in SQLite.
+air fryer, OTG, induction), meals and snacks per day (e.g. 3 meals + 1
+snack), and initial calorie/macro/micro targets (text or screenshot — sent
+directly to Claude's vision, no separate OCR). Stored as the user profile
+in SQLite.
+
+Per-dish portion sizes are not asked for directly — they're an output, not
+an input. Total daily calorie/macro targets are split across the chosen
+number of meals/snacks, and exact ingredient grams per dish are computed
+from that split via the local nutrition DB (same math as the rest of the
+plan), rather than being constrained by a separately-stated gram figure.
 
 Available cooking mediums constrain the Meal Plan Generator and Recipe
 Writer: dishes are only proposed if they're achievable with at least one of

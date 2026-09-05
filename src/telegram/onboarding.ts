@@ -4,7 +4,7 @@ import { runClaude } from "../anthropic/client.js";
 import { userProfileRepo } from "../db/repositories/userProfileRepo.js";
 import { downloadTelegramPhotoToTempFile } from "./downloadPhoto.js";
 
-type Step = "diet" | "allergies" | "region" | "cookingMediums" | "portion" | "existingPlan" | "done";
+type Step = "diet" | "allergies" | "region" | "cookingMediums" | "mealsPerDay" | "snacksPerDay" | "existingPlan" | "done";
 
 interface Session {
   step: Step;
@@ -12,7 +12,8 @@ interface Session {
   allergies?: string[];
   region?: string;
   cookingMediums?: string[];
-  portionGramsPerMeal?: number;
+  mealsPerDay?: number;
+  snacksPerDay?: number;
   processing?: boolean;
 }
 
@@ -26,7 +27,8 @@ const PROMPTS: Record<Step, string> = {
   allergies: "Any allergies or dislikes? Comma-separated, or 'none'.",
   region: "Which regional cuisine do you prefer? (north-indian / south-indian / east-indian / west-indian)",
   cookingMediums: "What cooking mediums do you have available? Comma-separated (e.g. gas-stove, convection-microwave, air-fryer, otg, induction).",
-  portion: "What's your target portion size per meal, in grams? (e.g. 350)",
+  mealsPerDay: "How many meals do you want per day? (e.g. 3)",
+  snacksPerDay: "Any snacks in between? How many per day? (e.g. 0, 1, 2)",
   existingPlan: "Do you have an existing meal plan (e.g. from a previous dietician)? Send it as text or a screenshot, or type 'skip'.",
   done: "You're all set! Send me your calorie/macro targets (text or a screenshot) whenever you're ready.",
 };
@@ -52,7 +54,8 @@ function completeOnboarding(chatId: number, session: Session, preferenceNotes: s
     allergies: session.allergies!,
     region: session.region!,
     cookingMediums: session.cookingMediums!,
-    portionGramsPerMeal: session.portionGramsPerMeal!,
+    mealsPerDay: session.mealsPerDay!,
+    snacksPerDay: session.snacksPerDay!,
     preferenceNotes,
   });
   sessions.delete(chatId);
@@ -111,14 +114,23 @@ export function registerOnboarding(bot: Telegraf): void {
         return ctx.reply(PROMPTS.cookingMediums);
       case "cookingMediums":
         session.cookingMediums = text.split(",").map((s) => s.trim().toLowerCase());
-        session.step = "portion";
-        return ctx.reply(PROMPTS.portion);
-      case "portion": {
-        const grams = Number(text);
-        if (!Number.isFinite(grams) || grams <= 0) {
-          return ctx.reply("Please send a positive number of grams.");
+        session.step = "mealsPerDay";
+        return ctx.reply(PROMPTS.mealsPerDay);
+      case "mealsPerDay": {
+        const count = Number(text);
+        if (!Number.isInteger(count) || count <= 0) {
+          return ctx.reply("Please send a positive whole number of meals.");
         }
-        session.portionGramsPerMeal = grams;
+        session.mealsPerDay = count;
+        session.step = "snacksPerDay";
+        return ctx.reply(PROMPTS.snacksPerDay);
+      }
+      case "snacksPerDay": {
+        const count = Number(text);
+        if (!Number.isInteger(count) || count < 0) {
+          return ctx.reply("Please send a whole number of snacks (0 or more).");
+        }
+        session.snacksPerDay = count;
         session.step = "existingPlan";
         return ctx.reply(PROMPTS.existingPlan);
       }

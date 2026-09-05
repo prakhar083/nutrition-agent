@@ -5,7 +5,8 @@ export interface UserProfile {
   allergies: string[];
   region: string;
   cookingMediums: string[];
-  portionGramsPerMeal: number | null;
+  mealsPerDay: number;
+  snacksPerDay: number;
   preferenceNotes: string;
 }
 
@@ -18,7 +19,8 @@ export const userProfileRepo = {
       allergies: JSON.parse(row.allergies),
       region: row.region,
       cookingMediums: JSON.parse(row.cooking_mediums),
-      portionGramsPerMeal: row.portion_grams_per_meal,
+      mealsPerDay: row.meals_per_day,
+      snacksPerDay: row.snacks_per_day,
       preferenceNotes: row.preference_notes,
     };
   },
@@ -26,14 +28,15 @@ export const userProfileRepo = {
   upsert(profile: UserProfile): void {
     getDb()
       .prepare(
-        `INSERT INTO user_profile (id, diet_type, allergies, region, cooking_mediums, portion_grams_per_meal, preference_notes, updated_at)
-         VALUES (1, @dietType, @allergies, @region, @cookingMediums, @portionGramsPerMeal, @preferenceNotes, datetime('now'))
+        `INSERT INTO user_profile (id, diet_type, allergies, region, cooking_mediums, meals_per_day, snacks_per_day, preference_notes, updated_at)
+         VALUES (1, @dietType, @allergies, @region, @cookingMediums, @mealsPerDay, @snacksPerDay, @preferenceNotes, datetime('now'))
          ON CONFLICT(id) DO UPDATE SET
            diet_type = @dietType,
            allergies = @allergies,
            region = @region,
            cooking_mediums = @cookingMediums,
-           portion_grams_per_meal = @portionGramsPerMeal,
+           meals_per_day = @mealsPerDay,
+           snacks_per_day = @snacksPerDay,
            preference_notes = @preferenceNotes,
            updated_at = datetime('now')`
       )
@@ -42,7 +45,8 @@ export const userProfileRepo = {
         allergies: JSON.stringify(profile.allergies),
         region: profile.region,
         cookingMediums: JSON.stringify(profile.cookingMediums),
-        portionGramsPerMeal: profile.portionGramsPerMeal,
+        mealsPerDay: profile.mealsPerDay,
+        snacksPerDay: profile.snacksPerDay,
         preferenceNotes: profile.preferenceNotes,
       });
   },

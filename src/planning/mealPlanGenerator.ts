@@ -10,14 +10,18 @@ export interface PlannedDish {
 }
 
 const SYSTEM_PROMPT = `You are a meal planner. You will be given: daily nutrition targets,
-a user profile (diet type, allergies, region, cooking mediums, and optional free-text
-preference notes extracted from a previous meal plan), a list of available ingredients
-with names, and a list of dish names to avoid (recently served).
-Compose 3 meals (breakfast, lunch, dinner) for the day using ONLY ingredient names from
-the provided list, respecting diet type, allergies, region, and avoiding the excluded dish
-names. Each dish must only use cooking techniques achievable with the user's available
-cooking mediums. Treat preference notes as soft style guidance (favor similar ingredients/
-cuisines/macro balance) — do NOT treat them as specific dishes to repeat.
+a user profile (diet type, allergies, region, cooking mediums, meals per day, snacks per
+day, and optional free-text preference notes extracted from a previous meal plan), a list
+of available ingredients with names, and a list of dish names to avoid (recently served).
+Compose exactly profile.mealsPerDay meals plus profile.snacksPerDay snacks for the day
+(e.g. mealsPerDay=3, snacksPerDay=1 means 3 meals + 1 snack = 4 total dishes), using ONLY
+ingredient names from the provided list, respecting diet type, allergies, region, and
+avoiding the excluded dish names. Split the day's total calorie/macro targets across these
+meals and snacks so their combined totals hit the targets — snacks should generally be
+smaller portions than meals, but the exact split is your judgment. Each dish must only use
+cooking techniques achievable with the user's available cooking mediums. Treat preference
+notes as soft style guidance (favor similar ingredients/cuisines/macro balance) — do NOT
+treat them as specific dishes to repeat.
 Respond with ONLY a JSON array, no other text, in this exact shape:
 [{"name": "<dish_name>", "ingredients": [{"ingredientName": "<from list>", "grams": <number>}]}]`;
 

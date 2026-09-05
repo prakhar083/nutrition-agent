@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS user_profile (
   allergies TEXT NOT NULL DEFAULT '[]',
   region TEXT NOT NULL,
   cooking_mediums TEXT NOT NULL DEFAULT '[]',
-  portion_grams_per_meal INTEGER,
+  meals_per_day INTEGER,
+  snacks_per_day INTEGER,
   preference_notes TEXT NOT NULL DEFAULT '',
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
