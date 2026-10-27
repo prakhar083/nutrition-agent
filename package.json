@@ -9,7 +9,8 @@
     "dev": "tsx src/index.ts",
     "test": "vitest run",
     "daily": "tsx scripts/trigger-daily.ts",
-    "recipe": "tsx scripts/trigger-recipe.ts"
+    "recipe": "tsx scripts/trigger-recipe.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.5.0",
@@ -25,5 +26,12 @@
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vitest": "^2.1.4"
+  },
+  "description": "Butler: a personal nutritionist agent on Telegram that plans macro-accurate daily meals.",
+  "license": "MIT",
+  "author": "Prakhar Vijay",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/prakhar083/nutrition-agent"
   }
 }
